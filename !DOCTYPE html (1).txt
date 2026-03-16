@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Painel Omega Tubarão</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+
+body{
+font-family:Segoe UI,Arial;
+margin:0;
+padding:0;
+background:linear-gradient(#02142e,#083a66);
+overflow-x:hidden;
+}
+
+.ocean{
+position:fixed;
+bottom:0;
+left:0;
+width:200%;
+height:250px;
+background:rgba(255,255,255,0.08);
+border-radius:45%;
+animation:wave1 10s linear infinite;
+}
+
+.ocean2{animation:wave2 18s linear infinite;opacity:0.6;}
+.ocean3{animation:wave3 25s linear infinite;opacity:0.4;}
+
+@keyframes wave1{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes wave2{0%{transform:translateX(-20%)}100%{transform:translateX(-70%)}}
+@keyframes wave3{0%{transform:translateX(-10%)}100%{transform:translateX(-60%)}}
+
+.shark{
+position:fixed;
+width:120px;
+opacity:0.18;
+animation:swim linear infinite;
+}
+
+@keyframes swim{0%{left:-200px}100%{left:110%}}
+
+.container{
+position:relative;
+background:white;
+padding:30px;
+border-radius:14px;
+max-width:1300px;
+margin:auto;
+margin-top:30px;
+box-shadow:0 20px 60px rgba(0,0,0,0.4);
+z-index:10;
+}
+
+h1{text-align:center;margin-bottom:30px;}
+
+.stats{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+gap:15px;
+margin-bottom:25px;
+}
+
+.card{
+background:linear-gradient(135deg,#0284c7,#0ea5e9);
+color:white;
+padding:22px;
+border-radius:12px;
+text-align:center;
+box-shadow:0 6px 15px rgba(0,0,0,0.3);
+}
+
+.num{font-size:34px;font-weight:bold;}
+
+.topbar{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+justify-content:center;
+margin-bottom:25px;
+}
+
+input,button{
+padding:10px;
+border-radius:6px;
+border:1px solid #ccc;
+}
+
+button{
+background:linear-gradient(135deg,#0369a1,#0ea5e9);
+color:white;
+font-weight:bold;
+cursor:pointer;
+border:none;
+}
+
+table{width:100%;border-collapse:collapse;}
+
+th{
+background:#0f172a;
+color:white;
+padding:12px;
+}
+
+td{
+border:1px solid #ddd;
+padding:10px;
+text-align:center;
+}
+
+tr:hover{
+transform:scale(1.02);
+background:#e0f2fe;
+}
+
+tr.top1{
+background:linear-gradient(90deg,#ffd700,#fff4b5);
+animation:pulse 1.5s infinite;
+}
+
+tr.top2{background:linear-gradient(90deg,#c0c0c0,#e5e5e5);}
+tr.top3{background:linear-gradient(90deg,#cd7f32,#f3c89c);}
+
+@keyframes pulse{
+0%{transform:scale(1)}
+50%{transform:scale(1.07)}
+100%{transform:scale(1)}
+}
+
+canvas{margin-top:35px;}
+
+</style>
+</head>
+
+<body>
+
+<div class="ocean"></div>
+<div class="ocean ocean2"></div>
+<div class="ocean ocean3"></div>
+
+<script>
+for(let i=0;i<10;i++){
+let img=document.createElement("img")
+img.src="af06c067-e88b-42d8-8ca7-3de371dac08b.png"
+img.className="shark"
+img.style.bottom=Math.random()*400+"px"
+img.style.animationDuration=(15+Math.random()*20)+"s"
+document.body.appendChild(img)
+}
+</script>
+
+<div class="container">
+
+<h1>🏆 Equipe Chamados Omega</h1>
+
+<div class="stats">
+
+<div class="card">
+<div class="num" id="membros">0</div>
+Membros
+</div>
+
+<div class="card">
+<div class="num" id="totalChamados">0</div>
+Total Chamados
+</div>
+
+<div class="card">
+<div class="num" id="totalAval">0</div>
+Total Avaliações
+</div>
+
+</div>
+
+<div class="topbar">
+
+<input id="entrada" placeholder="Nome ID Chamados Avaliações">
+
+<button onclick="add()">Adicionar</button>
+
+<input id="buscar" placeholder="Buscar..." onkeyup="buscar()">
+
+<button onclick="excel()">Excel</button>
+
+<button onclick="pdf()">PDF</button>
+
+<button onclick="limpar()">Limpar</button>
+
+</div>
+
+<table>
+
+<thead>
+<tr>
+<th>🏆</th>
+<th>Nome</th>
+<th>ID</th>
+<th>Chamados</th>
+<th>Avaliações</th>
+<th>Ações</th>
+</tr>
+</thead>
+
+<tbody id="tabela"></tbody>
+
+</table>
+
+<canvas id="grafico"></canvas>
+
+</div>
+
+<script>
+
+let dados = JSON.parse(localStorage.getItem("omega")) || []
+
+function salvar(){
+localStorage.setItem("omega",JSON.stringify(dados))
+}
+
+function medalha(i){
+if(i==0)return"🥇"
+if(i==1)return"🥈"
+if(i==2)return"🥉"
+return""
+}
+
+function add(){
+
+let t=document.getElementById("entrada").value.split(/\s+/)
+
+if(t.length<4){
+alert("Use: Nome ID Chamados Avaliações")
+return
+}
+
+dados.push({
+nome:t[0],
+id:t[1],
+chamados:Number(t[2]),
+avaliacoes:Number(t[3])
+})
+
+document.getElementById("entrada").value=""
+
+ordenar()
+
+}
+
+function ordenar(){
+dados.sort((a,b)=>b.chamados-a.chamados)
+salvar()
+render()
+}
+
+function atualizarCards(){
+
+document.getElementById("membros").innerText=dados.length
+
+let totalChamados=dados.reduce((s,p)=>s+p.chamados,0)
+
+let totalAval=dados.reduce((s,p)=>s+p.avaliacoes,0)
+
+document.getElementById("totalChamados").innerText=totalChamados
+document.getElementById("totalAval").innerText=totalAval
+
+}
+
+function editarCampo(i,campo,valor){
+
+if(campo=="chamados" || campo=="avaliacoes"){
+valor=Number(valor)
+if(isNaN(valor)) return
+}
+
+dados[i][campo]=valor
+
+ordenar()
+
+}
+
+function excluir(i){
+
+if(confirm("Excluir membro?")){
+
+dados.splice(i,1)
+
+salvar()
+
+render()
+
+}
+
+}
+
+function render(lista=dados){
+
+let tb=document.getElementById("tabela")
+
+tb.innerHTML=""
+
+lista.forEach((p,i)=>{
+
+let tr=document.createElement("tr")
+
+if(i==0)tr.className="top1"
+if(i==1)tr.className="top2"
+if(i==2)tr.className="top3"
+
+tr.innerHTML=`
+
+<td>${medalha(i)}</td>
+
+<td contenteditable="true" onblur="editarCampo(${i},'nome',this.innerText)">
+${p.nome}
+</td>
+
+<td contenteditable="true" onblur="editarCampo(${i},'id',this.innerText)">
+${p.id}
+</td>
+
+<td contenteditable="true" onblur="editarCampo(${i},'chamados',this.innerText)">
+${p.chamados}
+</td>
+
+<td contenteditable="true" onblur="editarCampo(${i},'avaliacoes',this.innerText)">
+${p.avaliacoes}
+</td>
+
+<td>
+<button onclick="excluir(${i})">🗑</button>
+</td>
+
+`
+
+tb.appendChild(tr)
+
+})
+
+atualizarCards()
+
+grafico()
+
+}
+
+function buscar(){
+
+let t=document.getElementById("buscar").value.toLowerCase()
+
+let f=dados.filter(p=>
+p.nome.toLowerCase().includes(t) ||
+p.id.includes(t)
+)
+
+render(f)
+
+}
+
+function limpar(){
+
+if(confirm("Apagar tudo?")){
+dados=[]
+salvar()
+render()
+}
+
+}
+
+function excel(){
+
+let ws=XLSX.utils.json_to_sheet(dados)
+
+let wb=XLSX.utils.book_new()
+
+XLSX.utils.book_append_sheet(wb,ws,"Omega")
+
+XLSX.writeFile(wb,"Equipe_Omega.xlsx")
+
+}
+
+function pdf(){
+window.print()
+}
+
+let chart
+
+function grafico(){
+
+let nomes=dados.map(p=>p.nome)
+let cham=dados.map(p=>p.chamados)
+
+if(chart)chart.destroy()
+
+chart=new Chart(document.getElementById("grafico"),{
+
+type:"bar",
+
+data:{
+labels:nomes,
+datasets:[{
+label:"Chamados por Analista",
+data:cham,
+backgroundColor:[
+"#0284c7",
+"#0ea5e9",
+"#38bdf8",
+"#7dd3fc",
+"#bae6fd"
+]
+}]
+},
+
+options:{
+scales:{y:{beginAtZero:true}}
+}
+
+})
+
+}
+
+ordenar()
+
+</script>
+
+</body>
+</html>
